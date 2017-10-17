@@ -6,10 +6,18 @@ uint16_t high = 100;
 
 uint8_t sig_background_update = 0;
 
+// higher "DECAY": current reading more relevant
 #define FAST_DECAY 40
 #define BACKGROUND_DECAY 2
 
-uint16_t printer = 0;
+#define DECIMATE 80
+uint16_t deci_count = DECIMATE;
+uint8_t deci_hi = 0;
+
+//#define DEBUG_BACKGROUND
+#ifdef DEBUG_BACKGROUND
+uint8_t printer = 0;
+#endif
 
 void setup() {
   Serial.begin(9600);
@@ -43,6 +51,7 @@ void loop() {
   uint16_t trigger = sig_background + ((sig_high - sig_background) / 2);
 
   if (!sig_background_update++) {
+#ifdef DEBUG_BACKGROUND
     Serial.println();
     Serial.print("background: ");
     Serial.print(sig_background);
@@ -53,23 +62,31 @@ void loop() {
     Serial.print(" trigger:");
     Serial.print(trigger);
     Serial.print(" -- ");
+#endif
     DECAY(sig_background, val, BACKGROUND_DECAY);
     DECAY(sig_high, high, BACKGROUND_DECAY);
     high = sig_background;
   }
 
+  bool hi = sig_fast > trigger;
+
+  if (hi) {
+    ++deci_hi;
+  }
+
+  if (!--deci_count) {
+    deci_count = DECIMATE;
+    bool hi = deci_hi > DECIMATE / 2;
+    deci_hi = 0;
+    Serial.print(hi ? "X" : ".");
+  }
+
+#ifdef DEBUG_BACKGROUND
   printer++;
 
   if (printer == 2) {
-    //Serial.print(val);
-    //Serial.print(" - ");
-    if (sig_fast > trigger) {
-      Serial.print("X");
-      //Serial.println(sig_fast);
-    } else {
-      Serial.print(".");
-      //Serial.println(sig_fast);
-    }
+    Serial.print(hi ? "X" : ".");
     printer = 0;
   }
+#endif
 }
