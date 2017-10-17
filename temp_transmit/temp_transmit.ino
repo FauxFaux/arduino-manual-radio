@@ -6,44 +6,79 @@
 RCSwitch mySwitch = RCSwitch();
 DHT dht(11, DHT22);
 
-// the setup function runs once when you press reset or power the board
+#define RF 10
+#define DELAY 25
+
 void setup() {
-  // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
-  Serial.begin(9600);
-  mySwitch.enableTransmit(10);
+  pinMode(RF, OUTPUT);
 }
 
-// the loop function runs over and over again forever
+void set(int first, int second) {
+    digitalWrite(RF, first);
+    delay(DELAY);
+    digitalWrite(RF, second);
+    delay(DELAY);  
+}
+
+void send_bit(bool hi) {
+  if (hi) {
+    set(LOW, HIGH); // 1
+  } else {
+    set(HIGH, LOW); // 0    
+  }
+}
+
+void send_char(uint8_t val) {
+  bool parity = false;
+  for (uint8_t i = 0; i < 8; ++i) {
+    bool b = val & (1 << i);
+    parity ^= b;
+    send_bit(b);
+  }
+
+  send_bit(parity);
+}
+
+void send_data(const char *msg, size_t len) {
+  for (size_t i = 0; i < len; ++i) {
+    send_char(msg[i]);
+  }
+}
+
+void send_string(const char *msg) {
+  send_data(msg, strlen(msg));
+}
+
 void loop() {
-  digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-  mySwitch.send("101");
-  delay(1000);                       // wait for a second
-  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-  delay(100);                       // wait for a second
-
-  // Reading temperature or humidity takes about 250 milliseconds!
-  // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-  float h = dht.readHumidity();
-  // Read temperature as Celsius (the default)
   float t = dht.readTemperature();
-
-  // Check if any reads failed and exit early (to try again).
-  if (isnan(h) || isnan(t)) {
-    Serial.println("Failed to read from DHT sensor!");
+  if (isnan(t)) {
     return;
   }
 
-  // Compute heat index in Celsius (isFahreheit = false)
-  float hic = dht.computeHeatIndex(t, h, false);
+  digitalWrite(LED_BUILTIN, HIGH); 
 
-  Serial.print("Humidity: ");
-  Serial.print(h);
-  Serial.print(" %\t");
-  Serial.print("Temperature: ");
-  Serial.print(t);
-  Serial.print(" *C ");
-  Serial.print("Heat index: ");
-  Serial.print(hic);
-  Serial.println(" *C ");
+  // premable
+  {
+    for (int i = 0; i < 6; ++i) {
+      send_bit(false);
+    }
+
+    send_bit(true);
+    send_bit(true);
+  }
+
+  uint8_t int_part = (uint8_t)t;
+  uint8_t dec_part = (t - (uint8_t)t) * 255;
+  send_char(int_part);
+  send_char(dec_part);
+  send_char(int_part ^ dec_part);
+
+  send_bit(true);
+  digitalWrite(RF, LOW);
+  
+  digitalWrite(LED_BUILTIN, LOW);
+
+  delay(2000);
 }
+
