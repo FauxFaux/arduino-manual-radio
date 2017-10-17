@@ -10,9 +10,24 @@ uint8_t sig_background_update = 0;
 #define FAST_DECAY 40
 #define BACKGROUND_DECAY 2
 
-#define DECIMATE 80
+#define DECIMATE 20
+#define WIGGLE 2
 uint16_t deci_count = DECIMATE;
 uint8_t deci_hi = 0;
+
+uint8_t symbol_width = 6;
+uint8_t cur_run = 0;
+bool first_bit = false;
+bool second_bit = false;
+
+enum State {
+  AWAIT_FIRST_HIGH,
+  AWAIT_FIRST_LOW,
+  AWAIT_SECOND_HIGH,
+  AWAIT_SECOND_LOW,
+  DATA,
+  VERIFY_DATA,
+} state = AWAIT_FIRST_HIGH;
 
 //#define DEBUG_BACKGROUND
 #ifdef DEBUG_BACKGROUND
@@ -78,7 +93,83 @@ void loop() {
     deci_count = DECIMATE;
     bool hi = deci_hi > DECIMATE / 2;
     deci_hi = 0;
-    Serial.print(hi ? "X" : ".");
+
+    switch (state) {
+      case AWAIT_FIRST_HIGH: {
+        if (hi) {
+          cur_run++;
+        } else {
+          if (cur_run > 3) {
+            symbol_width = cur_run;
+            state = AWAIT_FIRST_LOW;
+          }
+
+          cur_run = 0;
+        }
+      } break;
+      case AWAIT_FIRST_LOW: {
+        if (!hi) {
+          cur_run++;
+        } else {
+          if (abs(cur_run - symbol_width) < WIGGLE) {
+            state = AWAIT_SECOND_HIGH;
+          } else {
+            state = AWAIT_FIRST_HIGH;
+          }
+          cur_run = 0;
+        }
+      } break;
+      case AWAIT_SECOND_HIGH: {
+        if (hi) {
+          cur_run++;
+        } else {
+          if (abs(cur_run - symbol_width) < WIGGLE) {
+            state = AWAIT_SECOND_LOW;
+          } else {
+            state = AWAIT_FIRST_HIGH;
+          }
+          cur_run = 0;          
+        }
+      } break;
+      case AWAIT_SECOND_LOW: {
+        if (!hi) {
+          cur_run++;
+        } else {
+          if (abs(cur_run - symbol_width) < WIGGLE) {
+            state = DATA;
+            Serial.print(symbol_width);
+            Serial.print(": (");
+            cur_run = 2 * symbol_width;
+          } else {
+            state = AWAIT_FIRST_HIGH;
+            cur_run = 0;
+          }
+        }
+      } break;
+      case DATA: {
+        Serial.print(hi ? "X" : ".");
+
+        if (0 == cur_run--) {
+          if (first_bit && !second_bit) {
+            Serial.print(") 0 (");
+            cur_run = 2 * symbol_width;
+          } else if (!first_bit && second_bit) {
+            Serial.print(") 1 (");
+            cur_run = 2 * symbol_width;
+          } else {
+            Serial.println(") end");
+            state = AWAIT_FIRST_HIGH;
+            cur_run = 0;
+          }
+        } else if (cur_run == symbol_width / 2) {
+          second_bit = hi;
+          Serial.print("_");
+        } else if (cur_run == symbol_width + symbol_width/2) {
+          first_bit = hi;
+          Serial.print("_");
+        }
+      } break;
+    }
   }
 
 #ifdef DEBUG_BACKGROUND

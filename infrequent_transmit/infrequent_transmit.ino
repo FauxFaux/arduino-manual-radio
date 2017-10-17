@@ -1,4 +1,5 @@
 #define RF 10
+#define DELAY 25
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -7,14 +8,14 @@ void setup() {
 
 void set(int first, int second) {
     digitalWrite(RF, first);
-    delay(50);
+    delay(DELAY);
     digitalWrite(RF, second);
-    delay(50);  
+    delay(DELAY);  
 }
 
 void loop() {
   digitalWrite(LED_BUILTIN, HIGH);
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 6; ++i) {
     set(HIGH, LOW);
   }
 
