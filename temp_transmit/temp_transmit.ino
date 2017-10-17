@@ -7,7 +7,7 @@ RCSwitch mySwitch = RCSwitch();
 DHT dht(11, DHT22);
 
 #define RF 10
-#define DELAY 25
+#define DELAY 40
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -79,6 +79,6 @@ void loop() {
   
   digitalWrite(LED_BUILTIN, LOW);
 
-  delay(2000);
+  delay(5000);
 }
 

@@ -44,11 +44,14 @@ uint8_t decoded = 0;
 uint8_t dec_pos = 0;
 
 //#define DEBUG_BACKGROUND
+//#define DEBUG_CLOCK
+//#define DEBUG_DECODE
+
+
 #ifdef DEBUG_BACKGROUND
 uint8_t printer = 0;
 #endif
 
-//#define DEBUG_CLOCK
 
 void setup() {
   Serial.begin(9600);
@@ -215,14 +218,14 @@ void enjoy_bit(bool hi) {
 }
 
 void enjoy_decoded_bit(bool hi) {
-#if DEBUG_DECODE
+#ifdef DEBUG_DECODE
   Serial.print(hi ? "X" : ".");
 #endif
   switch (dec_state) {
     case PREMABLE_LOW: {
       if (hi) {
         dec_state = PREMABLE_HI;
-#if DEBUG_DECODE
+#ifdef DEBUG_DECODE
         Serial.print("(");
 #endif
       }
@@ -233,7 +236,7 @@ void enjoy_decoded_bit(bool hi) {
         decoded = 0;
         dec_pos = 0;
         stashed_pos = 0;
-#if DEBUG_DECODE        
+#ifdef DEBUG_DECODE        
         Serial.print(")");
 #endif
       } else {
@@ -250,7 +253,7 @@ void enjoy_decoded_bit(bool hi) {
           recieved_parity ^= ((decoded & (1 << i)) == (1 << i));
         }
 
-#if DEBUG_DECODE
+#ifdef DEBUG_DECODE
         Serial.print(" => ");
         Serial.print(decoded);
         Serial.print(" (parity: ");
